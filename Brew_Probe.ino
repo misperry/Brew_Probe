@@ -17,6 +17,9 @@
 
 #define MQTT_VERSION MQTT_VERSION_3_1_1
 
+#define uS_TO_S_FACTOR 1000000           //convertion factor for micro seconds to seconds
+#define TIME_TO_SLEEP  60                 //Time ESP32 will go to sleep (in seconds)
+
 // Wifi: SSID and password
 const char* ssid     = "[Redacted]";
 const char* password = "[Redacted]";
@@ -26,7 +29,7 @@ const PROGMEM char* MQTT_CLIENT_ID = "Brew_DSTMP";
 const PROGMEM char* MQTT_SERVER_IP = "[Redacted]";
 const PROGMEM uint16_t MQTT_SERVER_PORT = 1883;
 const PROGMEM char* MQTT_USER = "homeassistant";
-const PROGMEM char* MQTT_PASSWORD = "[Your API Pass]";
+const PROGMEM char* MQTT_PASSWORD = "[Redacted]";
 
 // MQTT: topic
 const PROGMEM char* MQTT_SENSOR_TOPIC = "ha/brew";
@@ -79,7 +82,9 @@ void reconnect() {
 }
 
 void setup(void) {
-  Serial.begin(9600);
+    Serial.begin(9600);
+
+    esp_deep_sleep_enable_timer_wakeup(TIME_TO_SLEEP * uS_TO_S_FACTOR); // set ESP32 to wake up every 5 seconds
 
     // We start by connecting to a WiFi network
 
@@ -208,5 +213,8 @@ void loop(void) {
 
   publishData(fahrenheit);
 
+  delay(1000);
+
+  esp_deep_sleep_start();
   
 }
