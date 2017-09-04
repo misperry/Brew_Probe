@@ -13,6 +13,15 @@
 //
 //  Author:  M. Sperry
 //  Date:    08/21/2017
+//  Update:  09/4/2017
+//
+//
+//  Updates:  I have added timeouts for connections on wifi
+//            and MQTT so not to consume battery if unable to
+//            connect to wifi or mqtt server.  Also added the
+//            feature to serial print the MAC address of the
+//            device so you can edit it into your MAC access
+//            filter on your router.
 //***********************************************************
 
 #define MQTT_VERSION MQTT_VERSION_3_1_1
@@ -20,9 +29,15 @@
 #define uS_TO_S_FACTOR 1000000           //convertion factor for micro seconds to seconds
 #define TIME_TO_SLEEP  60                 //Time ESP32 will go to sleep (in seconds)
 
+#define CON_TIME_OUT 20                  //Timeout of no connection to wifi
+#define MQTT_TIME_OUT 10                  //Timeout of no connection to MQTT server
+
 // Wifi: SSID and password
 const char* ssid     = "[Redacted]";
 const char* password = "[Redacted]";
+
+//Mac Address Holder
+byte mac[6];
 
 // MQTT: ID, server IP, port, username and password
 const PROGMEM char* MQTT_CLIENT_ID = "Brew_DSTMP";
@@ -65,6 +80,7 @@ void callback(char* p_topic, byte* p_payload, unsigned int p_length) {
 }
 
 void reconnect() {
+  int connect_cnt = 0;
   // Loop until we're reconnected
   while (!client.connected()) {
     Serial.print("INFO: Attempting MQTT connection...");
@@ -77,11 +93,17 @@ void reconnect() {
       Serial.println("DEBUG: try again in 5 seconds");
       // Wait 5 seconds before retrying
       delay(5000);
+      connect_cnt++;
+      if (connect_cnt == MQTT_TIME_OUT)
+      {
+        esp_deep_sleep_start();
+      }
     }
   }
 }
 
 void setup(void) {
+    int connect_cnt = 0;
     Serial.begin(9600);
 
     esp_deep_sleep_enable_timer_wakeup(TIME_TO_SLEEP * uS_TO_S_FACTOR); // set ESP32 to wake up every 5 seconds
@@ -95,9 +117,30 @@ void setup(void) {
 
     WiFi.begin(ssid, password);
 
+    //Display the MAC address for the device.
+    WiFi.macAddress(mac);
+    
+    Serial.print("MAC: ");
+    Serial.print(mac[0],HEX);
+    Serial.print(":");
+    Serial.print(mac[1],HEX);
+    Serial.print(":");
+    Serial.print(mac[2],HEX);
+    Serial.print(":");
+    Serial.print(mac[3],HEX);
+    Serial.print(":");
+    Serial.print(mac[4],HEX);
+    Serial.print(":");
+    Serial.println(mac[5],HEX);
+
     while (WiFi.status() != WL_CONNECTED) {
-        delay(500);
+        delay(800);
         Serial.print(".");
+        connect_cnt++;
+        if (connect_cnt == CON_TIME_OUT)
+        {
+          esp_deep_sleep_start();
+        }
     }
 
     Serial.println("");
